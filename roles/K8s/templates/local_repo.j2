@@ -1,0 +1,11 @@
+[docker-ce-stable]
+name=docker-ce-stable-local-repo
+baseurl=/nfsshare01/repos/docker
+gpgcheck=0
+enabled=1
+
+[k8s]
+name=kubernetes-local-repo
+baseurl=/nfsshare01/repos/k8s_{{ k8s_version }}
+gpgcheck=0
+enabled=1

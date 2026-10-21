@@ -1,0 +1,26 @@
+- name: 1.1 進入指定目錄並載入 Docker 映像檔
+  ansible.builtin.shell:
+    cmd: docker load -i busybox.tar
+    chdir: "/nfsshare01/lsrc/{{ customer_name }}/images"
+  register: docker_load_result
+
+- name: 1.2 顯示目前的 Docker 映像檔清單
+  ansible.builtin.command:
+    cmd: docker images
+  register: docker_images_output
+
+- name: 1.3 印出 docker images 的執行結果
+  ansible.builtin.debug:
+    var: docker_images_output.stdout_lines
+
+- name: 2.1 登入 Harbor 倉庫 (明碼登入)
+  ansible.builtin.command:
+    cmd: "docker login {{ registry_ip }} -u admin -p Harbor12345"
+
+- name: 2.2 將 busybox 映像檔加上 Harbor 倉庫標籤
+  ansible.builtin.command:
+    cmd: "docker tag busybox:stable {{ registry_ip }}/library/busybox:stable"
+
+- name: 2.3 將映像檔推送至 Harbor 倉庫
+  ansible.builtin.command:
+    cmd: "docker push {{ registry_ip }}/library/busybox:stable"

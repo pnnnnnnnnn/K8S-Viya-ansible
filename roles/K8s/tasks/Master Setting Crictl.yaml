@@ -1,0 +1,34 @@
+- name: 1.1 建立並寫入 /etc/crictl.yaml 設定檔 
+  ansible.builtin.template:
+    src: crictl.yaml.j2
+    dest: /etc/crictl.yaml
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: 2.1 測試使用 crictl pull 拉取 Harbor 映像檔
+  ansible.builtin.command:
+    cmd: "crictl pull {{ registry_ip }}/library/busybox:stable"
+  register: crictl_pull_result
+
+- name: 2.2 顯示 crictl pull 執行結果
+  ansible.builtin.debug:
+    var: crictl_pull_result.stdout_lines
+
+- name: 2.3 驗證 crictl images 是否成功取得映像檔
+  ansible.builtin.command:
+    cmd: crictl images
+  register: crictl_images_result
+
+- name: 2.4 顯示 crictl images 執行結果
+  ansible.builtin.debug:
+    var: crictl_images_result.stdout_lines
+
+- name: 3.1 列出指定版本 kubeadm config 所需的映像檔清單
+  ansible.builtin.command:
+    cmd: kubeadm config images list --kubernetes-version v1.33.9
+  register: kubeadm_images_result
+
+- name: 3.2 顯示 kubeadm config 映像檔清單
+  ansible.builtin.debug:
+    var: kubeadm_images_result.stdout_lines

@@ -1,0 +1,23 @@
+registry_ip: "10.70.12.60"
+registry_host: "Bastion"
+master_init_ip: "10.70.12.61"
+customer_name: "nan_shan"
+
+# RHEL 系統版本號
+rhel_version: "9.8"
+
+# K8s Cluster 節點設定清單
+cluster_nodes:
+  - ip: "10.70.12.60"
+    name: "bastion"
+  - ip: "10.70.12.61"
+    name: "master"
+
+#network
+nfs_allowed_subnet: "10.70.12.0/24"
+
+#k8s vrsion
+k8s_version: "1.33.9"
+
+#VIP、HA
+HA_ip: "10.70.12.61"

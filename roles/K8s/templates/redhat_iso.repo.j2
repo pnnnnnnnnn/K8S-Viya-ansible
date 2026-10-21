@@ -1,0 +1,13 @@
+[rhel-{{ rhel_version }}-for-x86_64-appstream-rpms-iso]
+name=Red Hat Enterprise Linux {{ rhel_version }} for x86_64 AppStream (RPMs) ISO
+baseurl=file:///media/AppStream
+gpgkey=file:///media/RPM-GPG-KEY-redhat-release
+gpgcheck=0
+enabled=1
+
+[rhel-{{ rhel_version }}-for-x86_64-baseos-rpms-iso]
+name=Red Hat Enterprise Linux {{ rhel_version }} for x86_64 BaseOS (RPMs) ISO
+baseurl=file:///media/BaseOS
+gpgkey=file:///media/RPM-GPG-KEY-redhat-release
+gpgcheck=0
+enabled=1

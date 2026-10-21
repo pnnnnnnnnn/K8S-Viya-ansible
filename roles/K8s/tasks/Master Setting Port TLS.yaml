@@ -1,0 +1,33 @@
+- name: 1. 設定 kube-apiserver 解除 Port 限制 (--service-node-port-range)
+  ansible.builtin.lineinfile:
+    path: /etc/kubernetes/manifests/kube-apiserver.yaml
+    regexp: '^\s*-\s*--service-node-port-range='
+    line: '    - --service-node-port-range=1-65535'
+    insertbefore: '^\s*image:'
+    backup: yes
+
+- name: 2. 設定 kube-apiserver TLS 最低版本 (--tls-min-version)
+  ansible.builtin.lineinfile:
+    path: /etc/kubernetes/manifests/kube-apiserver.yaml
+    regexp: '^\s*-\s*--tls-min-version='
+    line: '    - --tls-min-version=VersionTLS13'
+    insertbefore: '^\s*image:'
+
+- name: 3. 設定 etcd TLS 加密套件安全設定 (--cipher-suites)
+  ansible.builtin.lineinfile:
+    path: /etc/kubernetes/manifests/etcd.yaml
+    regexp: '^\s*-\s*--cipher-suites='
+    line: '    - --cipher-suites=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384'
+    insertbefore: '^\s*image:'
+    backup: yes
+
+- name: 4. 設定 kubelet 停用弱加密演算法 (tlsCipherSuites)
+  ansible.builtin.blockinfile:
+    path: /var/lib/kubelet/config.yaml
+    marker: "# {mark} ANSIBLE MANAGED BLOCK kubelet tlsCipherSuites"
+    block: |
+      tlsCipherSuites:
+      - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+      - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+    insertafter: EOF
+    backup: yes

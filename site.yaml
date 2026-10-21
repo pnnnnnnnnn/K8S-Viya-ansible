@@ -1,0 +1,5 @@
+---
+- hosts: all          # 1. 必須指定這段 Play 要套用到哪些主機（例如 all 或特定群組）
+  become: yes         # 2. 以 root 權限執行
+  roles:
+    - K8s             # 3. 載入你的 K8s Role              

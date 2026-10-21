@@ -1,0 +1,28 @@
+- name: 1. 於目標機建立 .kube 目錄
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME | default('/root') }}/.kube"
+    state: directory
+    mode: '0755'
+
+- name: 2. 從指定的 Master 主機抓取 admin.conf 到 Ansible 控制端
+  ansible.builtin.fetch:
+    src: /etc/kubernetes/admin.conf
+    dest: /tmp/k8s_admin.conf
+    flat: yes
+  delegate_to: "{{ master_init_ip}}"
+  run_once: true
+
+- name: 3. 將 admin.conf 分發並設定權限到目標節點的 .kube/config
+  ansible.builtin.copy:
+    src: /tmp/k8s_admin.conf
+    dest: "{{ ansible_env.HOME | default('/root') }}/.kube/config"
+    mode: '0600'
+
+- name: 4. 驗證叢集節點狀態 (kubectl get nodes)
+  ansible.builtin.command: kubectl get nodes
+  register: kubectl_nodes_output
+  changed_when: false
+
+- name: 5. 顯示叢集節點狀態結果
+  ansible.builtin.debug:
+    msg: "{{ kubectl_nodes_output.stdout_lines }}"

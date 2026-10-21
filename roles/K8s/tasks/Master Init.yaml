@@ -1,0 +1,66 @@
+- name: 1. 自動清理與重置舊的 Kubernetes 環境 (確保每次都是乾淨狀態)
+  block:
+    - name: 執行 kubeadm reset
+      ansible.builtin.command: kubeadm reset -f
+      ignore_errors: true
+
+    - name: 清理殘留的 kubernetes 與 etcd 目錄
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/kubernetes
+        - /var/lib/etcd
+        - /root/.kube
+  when: inventory_hostname == groups['masters'][0]
+
+- name: 2. 執行第一台 Master 的 kubeadm init
+  ansible.builtin.command:
+    cmd: >
+      kubeadm init
+      --kubernetes-version={{ k8s_version }}
+      --control-plane-endpoint="{{ HA_ip }}:6443"
+      --pod-network-cidr=192.168.0.0/16
+      --upload-certs
+      --image-repository {{ registry_ip }}/base/registry.k8s.io
+  when: inventory_hostname == groups['masters'][0]
+
+- name: 3.1 上傳憑證並取得 certificate-key
+  ansible.builtin.command: kubeadm init phase upload-certs --upload-certs
+  register: upload_certs_output
+  when: inventory_hostname == groups['masters'][0]
+
+- name: 3.2 建立並取得標準的 Join 指令
+  ansible.builtin.command: kubeadm token create --print-join-command
+  register: join_command_output
+  when: inventory_hostname == groups['masters'][0]
+
+- name: 3.3 組合並暫存 Master Join 指令
+  ansible.builtin.set_fact:
+    join_master_cmd: "{{ join_command_output.stdout_lines[0] }} --control-plane --certificate-key {{ upload_certs_output.stdout_lines | last }}"
+  when: inventory_hostname == groups['masters'][0]
+
+- name: 3.4 暫存 Worker Join 指令
+  ansible.builtin.set_fact:
+    join_worker_cmd: "{{ join_command_output.stdout_lines[0] }}"
+  when: inventory_hostname == groups['masters'][0]
+
+- name: 4.1 從第一台 Master 取得專屬的 Master Join 指令
+  ansible.builtin.set_fact:
+    my_master_join_cmd: "{{ hostvars[groups['masters'][0]]['join_master_cmd'] }}"
+  when: inventory_hostname != groups['masters'][0]
+
+- name: 4.2 讓其餘的 Master 節點加入高可用控制平面
+  ansible.builtin.command:
+    cmd: "{{ my_master_join_cmd }}"
+  when: inventory_hostname != groups['masters'][0]
+
+- name: 5.1 顯示擷取到的 Master Join 指令
+  ansible.builtin.debug:
+    msg: "{{ hostvars[groups['masters'][0]]['join_master_cmd'] }}"
+  when: inventory_hostname == groups['masters'][0]
+
+- name: 5.2 顯示擷取到的 Worker Join 指令
+  ansible.builtin.debug:
+    msg: "{{ hostvars[groups['masters'][0]]['join_worker_cmd'] }}"
+  when: inventory_hostname == groups['masters'][0]

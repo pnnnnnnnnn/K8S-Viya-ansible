@@ -1,0 +1,5 @@
+/nfsshare01/repos             {{ nfs_allowed_subnet }}(rw,sync,no_root_squash,no_subtree_check)
+/nfsshare01/sas_pv            {{ nfs_allowed_subnet }}(rw,sync,no_root_squash,no_subtree_check)
+/nfsshare01/sas_compute       {{ nfs_allowed_subnet }}(rw,sync,no_root_squash,no_subtree_check)
+/nfsshare01/sas_data_access   {{ nfs_allowed_subnet }}(rw,sync,no_root_squash,no_subtree_check)
+/nfsshare01/sas_open_source   {{ nfs_allowed_subnet }}(rw,sync,no_root_squash,no_subtree_check)

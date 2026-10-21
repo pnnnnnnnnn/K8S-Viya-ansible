@@ -1,0 +1,8 @@
+server = "https://{{ registry_ip }}"
+
+[host."https://{{ registry_ip }}"]
+  capabilities = ["pull", "resolve", "push"]
+  ca = "/etc/containerd/certs.d/{{ registry_ip }}/ca.crt"
+
+  [host."https://{{ registry_ip }}".header]
+    authorization = "basic YWRtaW46SGFyYm9yMTIzNDU="

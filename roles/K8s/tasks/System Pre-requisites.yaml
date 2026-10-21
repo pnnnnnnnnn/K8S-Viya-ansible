@@ -1,0 +1,131 @@
+---
+- name: 1. 停止並停用 Firewalld 服務
+  ansible.builtin.systemd:
+    name: firewalld
+    state: stopped
+    enabled: false
+
+- name: 2. 停用 SELinux
+  ansible.posix.selinux:
+    state: disabled
+
+- name: 3.1 建立掛載點目錄
+  ansible.builtin.file:
+    path: /media
+    state: directory
+    mode: '0755'
+
+- name: 3.2 掛載 Local ISO 映像檔 (/dev/sr0)
+  ansible.posix.mount:
+    path: /media
+    src: /dev/sr0
+    fstype: iso9660
+    opts: ro,noauto
+    state: mounted
+
+- name: 3.4 檢查 /media 目錄內容
+  ansible.builtin.command: ls /media
+  register: ls_media_result
+  changed_when: false
+
+- name: 3.5 顯示 /media 目錄內容
+  ansible.builtin.debug:
+    msg: "{{ ls_media_result.stdout_lines }}"
+
+- name: 3.6 讀取 media.repo 內容
+  ansible.builtin.slurp:
+    src: /media/media.repo
+  register: media_repo_content
+
+- name: 3.7 顯示 media.repo 內容
+  ansible.builtin.debug:
+    msg: "{{ media_repo_content['content'] | b64decode }}"
+
+- name: 4.1 建立與配置 Local ISO Repo 檔案
+  ansible.builtin.template:
+    src: redhat_iso.repo.j2
+    dest: "/etc/yum.repos.d/redhat{{ rhel_version }}_iso.repo"
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: 4.2 清除並更新 DNF/Yum 快取
+  ansible.builtin.command: dnf clean all
+  changed_when: false
+
+- name: 5.1 確認 DNF 套件庫清單與運作狀態
+  ansible.builtin.command: dnf repolist
+  register: dnf_repolist_result
+  changed_when: false
+
+- name: 5.2 顯示可用套件庫結果
+  ansible.builtin.debug:
+    msg: "{{ dnf_repolist_result.stdout_lines }}"
+
+- name: 6.1 強制關閉 Swap 記憶體
+  ansible.builtin.command: swapoff -a
+  changed_when: true
+
+- name: 6.2 寫入 vm.swappiness 設定 (即時生效與永久保存)
+  ansible.posix.sysctl:
+    name: vm.swappiness
+    value: '0'
+    state: present
+    reload: yes
+
+- name: 6.3 永久停用 /etc/fstab 中的 swap 掛載
+  ansible.builtin.replace:
+    path: /etc/fstab
+    regexp: '^([^#].*?\sswap\s+sw\s+.*)$'
+    replace: '# \1'
+
+- name: 7. 自動寫入 Cluster 節點至 /etc/hosts
+  ansible.builtin.blockinfile:
+    path: /etc/hosts
+    marker: "# {mark} ANSIBER K8S CLUSTER NODES"
+    block: |
+      {% for node in cluster_nodes %}
+      {{ node.ip }}    {{ node.name }}
+      {% endfor %}
+
+- name: 8.2 安裝 Kubernetes 必要與建議系統套件
+  ansible.builtin.dnf:
+    name:
+      - chrony
+      - nfs-utils
+      - unzip
+      - rsync
+      - bash-completion
+      - telnet
+      - vim
+      - tmux
+      - git
+      - hdparm
+      - iperf3
+    state: present
+
+- name: 9.1 設定開機自動載入 br_netfilter 模組
+  ansible.builtin.copy:
+    dest: /etc/modules-load.d/k8s.conf
+    content: |
+      br_netfilter
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: 9.2 即時載入 br_netfilter 核心模組
+  ansible.builtin.command: modprobe br_netfilter
+  register: modprobe_result
+  failed_when: false
+  changed_when: modprobe_result.rc == 0
+
+- name: 10. 啟用 IPv4 IP 轉發功能 (即時生效並永久保存)
+  ansible.posix.sysctl:
+    name: net.ipv4.ip_forward
+    value: '1'
+    state: present
+    reload: yes
+
+- name: 11. 重新載入並套用所有 sysctl 系統設定
+  ansible.builtin.command: sysctl --system
+  changed_when: true

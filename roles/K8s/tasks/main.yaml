@@ -1,0 +1,40 @@
+---
+- name: 執行系統建置前作業
+  include_tasks: "System Pre-requisites.yaml"
+
+- name: 執行 Bastion 
+  include_tasks: "Bastion Setting.yaml"
+  when: inventory_hostname in groups['bastion']
+
+- name: 執行 Master
+  include_tasks: "Master Setting.yaml"
+  when: inventory_hostname in groups['masters']
+
+- name: load busybox
+  include_tasks: "Bastion load busybox.yaml"
+  when: inventory_hostname in groups['bastion']
+
+- name: Master crictl
+  include_tasks: "Master Setting Crictl.yaml"
+  when: inventory_hostname in groups['masters']
+
+- name: Unzip images
+  include_tasks: "Bastion Unzip image.yaml"
+  when: inventory_hostname in groups['bastion']
+
+- name: Master Init
+  include_tasks: "Master Init.yaml"
+  when: inventory_hostname in groups['masters']
+
+- name: config k8s
+  include_tasks: "Bastion config k8s.yaml"
+  when: inventory_hostname in groups['bastion']
+
+- name: 解除Port限制跟TLS加密協定
+  include_tasks: "Master Setting Port TLS.yaml"
+  when: inventory_hostname in groups['masters']
+
+
+
+
+  

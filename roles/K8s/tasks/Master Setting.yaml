@@ -1,0 +1,165 @@
+- name: 1.1 安裝 nfs-utils 與 iproute-tc
+  ansible.builtin.dnf:
+    name:
+      - nfs-utils
+      - iproute-tc
+    state: present
+
+- name: 2. 啟動並啟用 nfs-utils 相關服務
+  ansible.builtin.systemd:
+    name: nfs-client.target
+    state: started
+    enabled: yes
+
+- name: 3. 驗證 NFS 掛載點 (showmount)
+  ansible.builtin.command: "showmount -e {{ registry_ip }}"
+  register: showmount_result
+  changed_when: false
+
+- name: 4. 顯示 showmount 結果
+  ansible.builtin.debug:
+    msg: "{{ showmount_result.stdout_lines }}"
+
+- name: 5.1 建立掛載點資料夾
+  ansible.builtin.file:
+    path: "/nfsshare01/repos"
+    state: directory
+    mode: "0755"
+
+- name: 5.2 掛載 NFS 遠端目錄
+  ansible.builtin.mount:
+    path: "/nfsshare01/repos"
+    src: "{{ registry_host }}:/nfsshare01/repos"
+    fstype: nfs
+    state: mounted
+
+- name: 5.3 檢查檔案系統掛載狀態 (df -Th)
+  ansible.builtin.command: "df -Th /nfsshare01/repos"
+  register: df_result
+  changed_when: false
+
+- name: 5.4 顯示掛載結果
+  ansible.builtin.debug:
+    msg: "{{ df_result.stdout_lines }}"
+
+- name: 6. 安裝 yum-utils 套件
+  ansible.builtin.dnf:
+    name: yum-utils
+    state: present
+
+- name: 7. 尋找 /nfsshare01/repos/docker 目錄下的所有 RPM 檔案
+  ansible.builtin.find:
+    paths: "/nfsshare01/repos/docker"
+    patterns: "*.rpm"
+  register: rpm_files
+
+- name: 7.1 批次安裝取得的 RPM 套件
+  ansible.builtin.dnf:
+    name: "{{ rpm_files.files | map(attribute='path') | list }}"
+    state: present
+    disable_gpg_check: yes
+  when: rpm_files.matched > 0
+
+- name: 8.1 啟動 containerd 服務
+  ansible.builtin.systemd:
+    name: containerd
+    state: started
+    enabled: yes
+
+- name: 8.2 檢查 containerd 服務狀態
+  ansible.builtin.systemd:
+    name: containerd
+  register: containerd_status
+
+- name: 8.3 顯示 containerd 運行狀態
+  ansible.builtin.debug:
+    msg: "containerd 狀態: {{ containerd_status.status.ActiveState }}"
+
+- name: 9.1 尋找 /nfsshare01/repos/k8s_1.33.9 目錄下的所有 RPM 檔案
+  ansible.builtin.find:
+    paths: "/nfsshare01/repos/k8s_1.33.9"
+    patterns: "*.rpm"
+  register: k8s_rpm_files
+
+- name: 9.2 批次安裝 Kubernetes v1.33.9 RPM 套件
+  ansible.builtin.dnf:
+    name: "{{ k8s_rpm_files.files | map(attribute='path') | list }}"
+    state: present
+    disable_gpg_check: yes
+  when: k8s_rpm_files.matched > 0
+
+- name: 10.1 啟用並啟動 kubelet 服務
+  ansible.builtin.systemd:
+    name: kubelet
+    state: started
+    enabled: yes
+
+- name: 10.2 檢查 kubelet 服務狀態
+  ansible.builtin.systemd:
+    name: kubelet
+  register: kubelet_status
+
+- name: 10.3 顯示 kubelet 運行狀態
+  ansible.builtin.debug:
+    msg: "kubelet 狀態: {{ kubelet_status.status.ActiveState }}"
+
+- name: 11.1 確保 /etc/containerd 目錄存在
+  ansible.builtin.file:
+    path: /etc/containerd
+    state: directory
+    mode: "0755"
+
+- name: 11.2 產生 containerd 預設設定檔
+  ansible.builtin.shell: containerd config default > /etc/containerd/config.toml
+  args:
+    creates: /etc/containerd/config.toml
+
+- name: 11.3 透過 Jinja2 範本覆蓋 /etc/containerd/config.toml
+  ansible.builtin.template:
+    src: config.toml.j2
+    dest: /etc/containerd/config.toml
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: 11.4 重新啟動 containerd 服務
+  ansible.builtin.systemd:
+    name: containerd
+    state: restarted
+    daemon_reload: yes
+
+- name: 12.1 建立 containerd 憑證目錄與對應的 registry_ip 資料夾
+  ansible.builtin.file:
+    path: "/etc/containerd/certs.d/{{ registry_ip }}"
+    state: directory
+    mode: "0755"
+
+- name: 12.2 透過 Template 部署 hosts.toml 設定檔
+  ansible.builtin.template:
+    src: hosts.toml.j2
+    dest: "/etc/containerd/certs.d/{{ registry_ip }}/hosts.toml"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: 13.1 確保 Master 上對應的憑證目錄已經建立
+  ansible.builtin.file:
+    path: "/etc/containerd/certs.d/{{ registry_ip }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: 13.2 將 harbor.crt 派送到 Master 的 containerd 憑證目錄
+  ansible.builtin.copy:
+    src: "/nfsshare01/harbor/cert/harbor.crt"
+    dest: "/etc/containerd/certs.d/{{ registry_ip }}/ca.crt"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: 14. 重啟 containerd 服務
+  ansible.builtin.systemd:
+    name: containerd
+    state: restarted
+    enabled: true

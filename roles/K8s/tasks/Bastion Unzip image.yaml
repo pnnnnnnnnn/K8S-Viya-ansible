@@ -1,0 +1,46 @@
+- name: 1. 在 Bastion 解壓縮 images 壓縮檔
+  ansible.builtin.unarchive:
+    src: "/nfsshare01/lsrc/{{ customer_name }}/images/image.tgz"
+    dest: "/nfsshare01/lsrc/{{ customer_name }}/images/"
+    remote_src: true
+
+- name: 2.1 尋找 images 目錄下的所有 tar 檔案
+  ansible.builtin.find:
+    paths: "/nfsshare01/lsrc/{{ customer_name }}/images/image"
+    patterns: "*.tar"
+  register: tar_files
+
+- name: 2.2 批次載入所有的 Docker 映像檔
+  ansible.builtin.command:
+    cmd: "docker load -i {{ item.path }}"
+  loop: "{{ tar_files.files }}"
+  register: docker_load_results
+
+- name: 2.3 顯示映像檔載入結果
+  ansible.builtin.debug:
+    var: docker_load_results.results | map(attribute='stdout_lines') | list
+
+- name: 3.1 執行腳本為映像檔加上標籤 (Retag Images)
+  ansible.builtin.shell:
+    cmd: "./retag_images.sh {{ registry_ip }}/base images.txt"
+    chdir: "/nfsshare01/lsrc/{{ customer_name }}/images"
+  register: retag_images_result
+
+- name: 3.2 執行腳本將映像檔推送至 Harbor (Push Images)
+  ansible.builtin.shell:
+    cmd: "./push_images.sh {{ registry_ip }}/base images.txt"
+    chdir: "/nfsshare01/lsrc/{{ customer_name }}/images"
+  register: push_images_result
+
+- name: 4.1 載入 CoreDNS 映像檔
+  ansible.builtin.command:
+    cmd: docker load -i registry.k8s.io.coredns.corednsv1.12.0.tar
+    chdir: "/nfsshare01/lsrc/{{ customer_name }}/images/image"
+
+- name: 4.2 為 CoreDNS 映像檔重新加上 Harbor 倉庫標籤
+  ansible.builtin.command:
+    cmd: "docker tag registry.k8s.io/coredns/coredns:v1.12.0 {{ registry_ip }}/base/registry.k8s.io/coredns:v1.12.0"
+
+- name: 4.3 將 CoreDNS 映像檔推送至 Harbor 倉庫
+  ansible.builtin.command:
+    cmd: "docker push {{ registry_ip }}/base/registry.k8s.io/coredns:v1.12.0"

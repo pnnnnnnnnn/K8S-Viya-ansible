@@ -1,0 +1,22 @@
+[req]
+default_bits = 4096
+prompt = no
+default_md = sha256
+x509_extensions = v3_req
+distinguished_name = dn
+
+[dn]
+C = TW
+ST = Taiwan
+L = Taipei
+O = Company
+OU = IT
+CN = {{ registry_ip }}
+
+[v3_req]
+keyUsage = critical, digitalSignature, keyEncipherment
+extendedKeyUsage = serverAuth
+subjectAltName = @alt_names
+
+[alt_names]
+IP.1 = {{ registry_ip }}

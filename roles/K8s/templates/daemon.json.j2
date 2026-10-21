@@ -1,0 +1,11 @@
+{
+  "live-restore": true,
+  "group": "dockerroot",
+  "insecure-registries": ["{{ registry_ip }}:443"],
+  "exec-opts": ["native.cgroupdriver=systemd"],
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "100m"
+  },
+  "storage-driver": "overlay2"
+}
