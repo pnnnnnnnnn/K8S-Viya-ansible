@@ -7,11 +7,23 @@ customer_name: "nan_shan"
 rhel_version: "9.8"
 
 # K8s Cluster 節點設定清單
+# group_vars/all.yml
 cluster_nodes:
   - ip: "10.70.12.60"
     name: "bastion"
+    roles: ["bastion"]
   - ip: "10.70.12.61"
     name: "master"
+    roles: ["control-plane"]
+  - ip: "10.70.12.65"
+    name: "worker01"
+    roles: ["worker"]
+  - ip: "10.70.12.66"
+    name: "worker02"
+    roles: ["worker", "cas"]
+  - ip: "10.70.12.67"
+    name: "worker03"
+    roles: ["worker", "compute"]
 
 #network
 nfs_allowed_subnet: "10.70.12.0/24"
@@ -21,3 +33,6 @@ k8s_version: "1.33.9"
 
 #VIP、HA
 HA_ip: "10.70.12.61"
+
+#CAS VM Core
+sascache_count: 12

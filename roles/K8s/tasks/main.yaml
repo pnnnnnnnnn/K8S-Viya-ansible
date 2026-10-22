@@ -30,10 +30,22 @@
   include_tasks: "Bastion config k8s.yaml"
   when: inventory_hostname in groups['bastion']
 
+- name: Get node
+  include_tasks: "Bastion get node.yaml"
+  when: inventory_hostname in groups['bastion']
+
 - name: 解除Port限制跟TLS加密協定
   include_tasks: "Master Setting Port TLS.yaml"
   when: inventory_hostname in groups['masters']
 
+- name: 執行 Worker
+  include_tasks: "Worker Setting.yaml"
+  when: inventory_hostname in groups['workers']
+
+- name: Get node
+  include_tasks: "Bastion get node.yaml"
+  when: inventory_hostname in groups['bastion']
+  
 
 
 

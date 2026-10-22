@@ -1,0 +1,164 @@
+- name: 1.1 安裝 nfs-utils 與 iproute-tc 套件
+  ansible.builtin.dnf:
+    name:
+      - nfs-utils
+      - iproute-tc
+    state: present
+
+- name: 1.2 驗證 NFS 掛載 
+  ansible.builtin.command: "showmount -e {{ registry_ip }}"
+  register: nfs_showmount_output
+  changed_when: false
+
+- name: 1.3 顯示 NFS 驗證結果
+  ansible.builtin.debug:
+    msg: "{{ nfs_showmount_output.stdout_lines }}"
+
+- name: 1.4 建立本機的 NFS 掛載點目錄
+  ansible.builtin.file:
+    path: "/nfsshare01/repos"
+    state: directory
+    mode: '0755'
+
+- name: 1.5 掛載遠端 NFS 目錄 
+  ansible.builtin.mount:
+    path: "/nfsshare01/repos"
+    src: "{{ registry_host }}:/nfsshare01/repos"
+    fstype: nfs
+    state: mounted
+
+- name: 1.6 執行 df -Th 檢查檔案系統掛載狀態
+  ansible.builtin.command: "df -Th"
+  register: df_output
+  changed_when: false
+
+- name: 1.7 顯示 df -Th 執行結果
+  ansible.builtin.debug:
+    msg: "{{ df_output.stdout_lines }}"
+
+- name: "2.1 安裝 yum-utils 套件"
+  ansible.builtin.dnf:
+    name: yum-utils
+    state: present
+
+- name: "3.1 進入 Docker 倉庫目錄並透過本地 RPM 安裝"
+  ansible.builtin.shell: dnf localinstall -y *.rpm
+  args:
+    chdir: /nfsshare01/repos/docker
+  register: docker_install
+  changed_when: "'Nothing to do' not in docker_install.stdout"
+
+- name: "3.2 啟動並啟用 containerd 服務"
+  ansible.builtin.systemd:
+    name: containerd
+    state: started
+    enabled: yes
+
+- name: "3.3 檢查 containerd 服務狀態"
+  ansible.builtin.systemd:
+    name: containerd
+  register: containerd_status
+  changed_when: false
+
+- name: "3.4 顯示 containerd 服務狀態"
+  ansible.builtin.debug:
+    msg: "containerd 服務狀態: {{ containerd_status.status.ActiveState }}"
+
+- name: "4 進入 K8S v1.33.9 倉庫目錄並安裝對應 RPM"
+  ansible.builtin.shell: dnf localinstall -y *.rpm
+  args:
+    chdir: /nfsshare01/repos/k8s_1.33.9
+  register: k8s_install
+  changed_when: "'Nothing to do' not in k8s_install.stdout"
+
+- name: 5.1 啟用與啟動 kubelet 服務
+  ansible.builtin.systemd:
+    name: kubelet
+    state: started
+    enabled: yes
+
+- name: 5.2 檢查 kubelet 服務狀態
+  ansible.builtin.systemd:
+    name: kubelet
+  register: kubelet_status
+  changed_when: false
+
+- name: 5.3 顯示 kubelet 服務狀態
+  ansible.builtin.debug:
+    msg: "kubelet 服務狀態: {{ kubelet_status.status.ActiveState }}"
+
+- name: 6. 設定 crictl 透過模板生成設定檔
+  ansible.builtin.template:
+    src: crictl.yaml.j2
+    dest: /etc/crictl.yaml
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: 7.1.1 在主節點上將 certs.d 打包成壓縮檔
+  ansible.builtin.shell: |
+    tar -zcvf /tmp/certs.d.tar.gz -C /etc/containerd certs.d
+  delegate_to: "{{ master_init_ip }}"
+  changed_when: true
+
+- name: 7.1.2 從主節點抓取 containerd 設定與憑證壓縮檔到控制端
+  ansible.builtin.fetch:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    flat: yes
+  delegate_to: "{{ master_init_ip }}"
+  loop:
+    - { src: '/etc/containerd/config.toml', dest: '/tmp/containerd_config.toml' }
+    - { src: '/tmp/certs.d.tar.gz', dest: '/tmp/certs.d.tar.gz' }
+
+- name: 7.1.3 將 config.toml 派送到目標機器
+  ansible.builtin.copy:
+    src: '/tmp/containerd_config.toml'
+    dest: '/etc/containerd/config.toml'
+    mode: '0644'
+
+- name: 7.1.4 在目標機器解壓縮憑證到 containerd 目錄
+  ansible.builtin.unarchive:
+    src: '/tmp/certs.d.tar.gz'
+    dest: '/etc/containerd/'
+    mode: '0644'
+
+- name: 7.2 重啟與檢查 containerd 服務
+  ansible.builtin.systemd:
+    name: containerd
+    state: restarted
+
+- name: 7.3 檢查 containerd 服務狀態
+  ansible.builtin.systemd:
+    name: containerd
+  register: containerd_status
+  changed_when: false
+
+- name: 7.4 顯示 containerd 服務狀態
+  ansible.builtin.debug:
+    msg: "containerd 服務狀態: {{ containerd_status.status.ActiveState }}"
+
+- name: 8.1 清理 Worker 節點上殘留的 Kubernetes 狀態
+  ansible.builtin.command: kubeadm reset --force
+  when: inventory_hostname in groups['workers']
+  changed_when: true
+
+- name: 8.2 讓 Worker 節點加入 Kubernetes 叢集
+  ansible.builtin.command: "{{ hostvars[groups['masters'][0]]['join_worker_cmd'] }}"
+  when: inventory_hostname in groups['workers']
+  changed_when: true
+
+- name: 9.1 建立 SAS Cache 目錄
+  ansible.builtin.file:
+    path: "/cache/sascache{{ '%02d' | format(item) }}"
+    state: directory
+    mode: '0777'
+  loop: "{{ range(1, sascache_count | int + 1) | list }}"
+  when: cluster_nodes | selectattr('ip', 'eq', inventory_hostname) | map(attribute='roles') | flatten | intersect(['cas']) | length > 0
+
+- name: 9.2 設置 /cache 及其下所有目錄權限為 777
+  ansible.builtin.file:
+    path: "/cache"
+    recurse: yes
+    mode: '0777'
+  when: cluster_nodes | selectattr('ip', 'eq', inventory_hostname) | map(attribute='roles') | flatten | intersect(['cas']) | length > 0

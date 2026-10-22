@@ -18,11 +18,3 @@
     dest: "{{ ansible_env.HOME | default('/root') }}/.kube/config"
     mode: '0600'
 
-- name: 4. 驗證叢集節點狀態 (kubectl get nodes)
-  ansible.builtin.command: kubectl get nodes
-  register: kubectl_nodes_output
-  changed_when: false
-
-- name: 5. 顯示叢集節點狀態結果
-  ansible.builtin.debug:
-    msg: "{{ kubectl_nodes_output.stdout_lines }}"
