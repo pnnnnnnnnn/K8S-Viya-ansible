@@ -1,0 +1,175 @@
+- name: 1. 上傳 metrics server image
+  ansible.builtin.shell: |
+    docker load -i metrics-server.tar
+    docker tag registry.k8s.io/metrics-server/metrics-server:v0.7.0 {{ registry_ip }}/base/registry.k8s.io/metrics-server/metrics-server:v0.7.0
+    docker push {{ registry_ip }}/base/registry.k8s.io/metrics-server/metrics-server:v0.7.0
+  args:
+    chdir: /nfsshare01/lsrc/{{ customer_name }}/k8s_yaml
+  changed_when: true
+
+- name: 2.1 批量替換 YAML 中的 image 倉庫前綴
+  ansible.builtin.shell: |
+    sed -i 's|image: registry.k8s.io/|image: {{ registry_ip }}/base/registry.k8s.io/|g' metrics-server.yaml
+  args:
+    chdir: /nfsshare01/lsrc/{{ customer_name }}/k8s_yaml
+  changed_when: true
+
+- name: 2.2 套用 Metrics Server YAML 設定
+  ansible.builtin.shell: kubectl apply -f metrics-server.yaml
+  args:
+    chdir: /nfsshare01/lsrc/{{ customer_name }}/k8s_yaml
+  register: apply_metrics_server
+  changed_when: "'created' in apply_metrics_server.stdout or 'configured' in apply_metrics_server.stdout"
+
+- name: 2.3 等待 120 秒讓 Metrics Server 服務部署完成
+  ansible.builtin.pause:
+    seconds: 120
+
+- name: 2.4 驗證 kube-system 命名空間下的 Pod 狀態
+  ansible.builtin.shell: kubectl get pods -n kube-system
+  register: metrics_pods_status
+  changed_when: false
+
+- name: 2.5 顯示 Pod 驗證結果
+  ansible.builtin.debug:
+    msg: "{{ metrics_pods_status.stdout_lines }}"
+
+- name: 2.6 驗證節點資源使用率 (kubectl top node)
+  ansible.builtin.shell: kubectl top node
+  register: metrics_top_node
+  changed_when: false
+
+- name: 2.7 顯示節點資源使用率結果
+  ansible.builtin.debug:
+    msg: "{{ metrics_top_node.stdout_lines }}"
+
+- name: 3.1 建立 nfs-provisioner 命名空間
+  ansible.builtin.shell: kubectl create ns nfs-provisioner
+  register: create_ns
+  failed_when: create_ns.rc != 0 and 'already exists' not in create_ns.stderr
+  changed_when: "'created' in create_ns.stdout"
+
+- name: 3.2 驗證命名空間狀態
+  ansible.builtin.shell: kubectl get ns nfs-provisioner
+  register: get_ns
+  changed_when: false
+
+- name: 3.3 套用 NFS Provisioner RBAC YAML 設定
+  ansible.builtin.shell: kubectl apply -f rbac.yaml
+  args:
+    chdir: /nfsshare01/lsrc/{{ customer_name }}/k8s_yaml/nfs-provisioner
+  register: apply_rbac
+  changed_when: "'created' in apply_rbac.stdout or 'configured' in apply_rbac.stdout"
+
+- name: 3.4 驗證 nfs-provisioner 命名空間下的 ServiceAccount
+  ansible.builtin.shell: kubectl get sa -n nfs-provisioner
+  register: get_sa
+  changed_when: false
+
+- name: 3.5 顯示 ServiceAccount 驗證結果
+  ansible.builtin.debug:
+    msg: "{{ get_sa.stdout_lines }}"
+
+- name: 4 批次修改 nfs-provisioner deployment.yaml 的 image 與 NFS IP 設定
+  ansible.builtin.shell: |
+    sed -i 's|image: k8s.gcr.io/|image: {{ registry_ip }}/base/k8s.gcr.io/|g' deployment.yaml
+    sed -i '/name: NFS_SERVER/{n;s/value:.*/value: {{ registry_ip }}/}' deployment.yaml
+    sed -i 's/server: .*/server: {{ registry_ip }}/g' deployment.yaml
+  args:
+    chdir: /nfsshare01/lsrc/{{ customer_name }}/k8s_yaml/nfs-provisioner
+  changed_when: true
+
+- name: 5.1 套用 nfs-provisioner deployment.yaml 設定
+  ansible.builtin.shell: kubectl apply -f deployment.yaml
+  args:
+    chdir: /nfsshare01/lsrc/{{ customer_name }}/k8s_yaml/nfs-provisioner
+  register: apply_deployment
+  changed_when: "'created' in apply_deployment.stdout or 'configured' in apply_deployment.stdout"
+
+- name: 5.2 等待 120 秒讓 NFS Provisioner 服務部署完成
+  ansible.builtin.pause:
+    seconds: 120
+
+- name: 5.3 驗證 nfs-provisioner 命名空間下的 Pod 狀態
+  ansible.builtin.shell: kubectl -n nfs-provisioner get pods
+  register: nfs_pods_status
+  changed_when: false
+
+- name: 5.4 顯示 NFS Provisioner Pod 驗證結果
+  ansible.builtin.debug:
+    msg: "{{ nfs_pods_status.stdout_lines }}"
+
+- name: 6.1 套用 StorageClass YAML 設定
+  ansible.builtin.shell: kubectl apply -f class.yaml
+  args:
+    chdir: /nfsshare01/lsrc/{{ customer_name }}/k8s_yaml/nfs-provisioner
+  register: apply_sc
+  changed_when: "'created' in apply_sc.stdout or 'configured' in apply_sc.stdout"
+
+- name: 6.2 驗證 StorageClass 狀態
+  ansible.builtin.shell: kubectl get sc
+  register: get_sc
+  changed_when: false
+
+- name: 6.3 顯示 StorageClass 驗證結果
+  ansible.builtin.debug:
+    msg: "{{ get_sc.stdout_lines }}"
+
+- name: 6.4 建立測試用的 PVC 與 Pod
+  ansible.builtin.shell: kubectl create -f test-claim.yaml -f test-pod.yaml
+  args:
+    chdir: /nfsshare01/lsrc/{{ customer_name }}/k8s_yaml/nfs-provisioner
+  register: create_test_resources
+  changed_when: "'created' in create_test_resources.stdout"
+
+- name: 6.5 檢查 PV 狀態
+  ansible.builtin.shell: kubectl get pv
+  register: get_pv
+  changed_when: false
+
+- name: 6.6 顯示 PV 狀態結果
+  ansible.builtin.debug:
+    msg: "{{ get_pv.stdout_lines }}"
+
+- name: 6.7 檢查 PVC 狀態
+  ansible.builtin.shell: kubectl get pvc
+  register: get_pvc
+  changed_when: false
+
+- name: 6.8 顯示 PVC 狀態結果
+  ansible.builtin.debug:
+    msg: "{{ get_pvc.stdout_lines }}"
+
+- name: 6.9 清理測試用的 Pod 與 PVC
+  ansible.builtin.shell: kubectl delete -f test-pod.yaml -f test-claim.yaml --ignore-not-found=true
+  args:
+    chdir: /nfsshare01/lsrc/{{ customer_name }}/k8s_yaml/nfs-provisioner
+  register: delete_test_resources
+  changed_when: "'deleted' in delete_test_resources.stdout"
+
+- name: 7.1 批次修改 contour.yaml 的 ghcr.io 映像檔前綴
+  ansible.builtin.shell: |
+    sed -i 's|image: ghcr.io/|image: {{ registry_ip }}/base/ghcr.io/|g' contour.yaml
+  args:
+    chdir: /nfsshare01/lsrc/{{ customer_name }}/k8s_yaml
+  changed_when: true
+
+- name: 7.2 套用 Contour YAML 設定
+  ansible.builtin.shell: kubectl apply -f contour.yaml
+  args:
+    chdir: /nfsshare01/lsrc/{{ customer_name }}/k8s_yaml
+  register: apply_contour
+  changed_when: "'created' in apply_contour.stdout or 'configured' in apply_contour.stdout"
+
+- name: 7.3 等待 120 秒讓 Contour 服務部署完成
+  ansible.builtin.pause:
+    seconds: 120
+
+- name: 7.4 驗證 projectcontour 命名空間下的 Pod 狀態
+  ansible.builtin.shell: kubectl get pods -n projectcontour
+  register: contour_pods_status
+  changed_when: false
+
+- name: 7.5 顯示 Contour Pod 驗證結果
+  ansible.builtin.debug:
+    msg: "{{ contour_pods_status.stdout_lines }}"

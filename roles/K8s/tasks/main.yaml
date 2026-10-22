@@ -45,6 +45,19 @@
 - name: Get node
   include_tasks: "Bastion get node.yaml"
   when: inventory_hostname in groups['bastion']
+
+- name: Setting Calico
+  include_tasks: "Bastion Setting Calico.yaml"
+  when: inventory_hostname in groups['bastion']
+
+- name: Get node
+  include_tasks: "Bastion get node.yaml"
+  when: inventory_hostname in groups['bastion']
+
+- name: Metrics Server
+  include_tasks: "Bastion load metrics.yaml"
+  when: inventory_hostname in groups['bastion']
+
   
 
 
