@@ -1,0 +1,21 @@
+# General example for adding mounts to SAS containers with a
+# PatchTransformer
+apiVersion: builtin
+kind: PatchTransformer
+metadata:
+  name: data-mounts-deployment
+patch: |-
+  - op: add
+    path: /spec/template/spec/containers/0/volumeMounts/-
+    value:
+      name: wine
+      mountPath: "/data/wine"
+  - op: add
+    path: /spec/template/spec/volumes/-
+    value:
+      name: wine
+      hostPath:
+        path: {{ host_path }}
+target:
+  kind: Deployment
+  annotationSelector: sas.com/sas-access-config=true

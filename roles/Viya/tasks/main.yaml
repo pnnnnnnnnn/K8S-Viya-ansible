@@ -1,0 +1,4 @@
+---
+- name: Viya Bastion Setting
+  include_tasks: "Bastion Setting.yaml "
+  when: inventory_hostname in groups['bastion']

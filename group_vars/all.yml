@@ -12,18 +12,23 @@ cluster_nodes:
   - ip: "10.70.12.60"
     name: "bastion"
     roles: ["bastion"]
+    k8s_node_name: "Bastion"
   - ip: "10.70.12.61"
     name: "master"
     roles: ["control-plane"]
+    k8s_node_name: "ma"
   - ip: "10.70.12.65"
     name: "worker01"
     roles: ["worker"]
+    k8s_node_name: "wo1"
   - ip: "10.70.12.66"
     name: "worker02"
     roles: ["worker", "cas"]
+    k8s_node_name: "wo2"
   - ip: "10.70.12.67"
     name: "worker03"
     roles: ["worker", "compute"]
+    k8s_node_name: "wo3"
 
 #network
 nfs_allowed_subnet: "10.70.12.0/24"
@@ -36,3 +41,49 @@ HA_ip: "10.70.12.61"
 
 #CAS VM Core
 sascache_count: 12
+
+#壓縮檔檔名
+zip_filename: SASViyaV4_9D4212_0_lts_2026.03_20260618.1781813572231_multipleAssets_1782280708908.zip
+
+#viya版本資料夾名稱
+viya_version: lts_2026.03
+
+#nfs or hostpath or jdbc
+data_mount_type: "nfs"
+
+# 各模式對應的路徑參數
+nfs_path: "/nfsshare01/sas_data_access"
+host_path: "/net/example.com/ifs/edm_data/Testdata/modeling/wine"
+jdbc_nfs_path: "/data/jdbcdrivers"
+
+#Viya網址**不用輸入https
+ingress_host: "viya-ingress-text.com.tw"
+
+# Python Support 相關參數設定
+python_version: "3.14.0"                  
+python_install_path: "Python-3.14.0"      
+python_nfs_path: "/nfsshare01/sas_open_source" 
+
+# R Support 相關參數設定
+r_version: "4.3.3"                     
+r_nfs_path: "/nfsshare01/sas_open_source" 
+
+###以下是push harbor的資料
+#Harbor path
+harbor_path: sas_repos_lts_2026.03
+
+#Harbor儲存專案名稱
+harbor_destination: sas_repos_lts_2026.03
+
+#Harbor帳號
+harbor_username: robot$sas_repos_lts_2026.03+sas-mirror-manager
+
+#Harbor權杖
+harbor_password: BD8MxTi45VyFulWdXpOLA4dVJ152NYGM
+
+
+
+
+
+
+

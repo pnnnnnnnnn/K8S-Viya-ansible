@@ -31,3 +31,18 @@
       - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
     insertafter: EOF
     backup: yes
+
+- name: 5. 重啟 Kubelet 以套用加密與 TLS 設定
+  ansible.builtin.systemd:
+    name: kubelet
+    state: restarted
+    daemon_reload: yes
+
+- name: 6. 等待 Kubernetes API Server 恢復回應
+  ansible.builtin.uri:
+    url: "https://127.0.0.1:6443/healthz"
+    validate_certs: no
+  register: api_health
+  until: api_health.status == 200
+  retries: 30
+  delay: 5
