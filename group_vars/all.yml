@@ -3,7 +3,7 @@ registry_host: "Bastion"
 master_init_ip: "10.70.12.61"
 customer_name: "nan_shan"
 
-# RHEL 系統版本號
+# RHEL 版本
 rhel_version: "9.8"
 
 # K8s Cluster 節點設定清單
@@ -23,12 +23,20 @@ cluster_nodes:
     k8s_node_name: "wo1"
   - ip: "10.70.12.66"
     name: "worker02"
-    roles: ["worker", "cas"]
+    roles: ["worker"]
     k8s_node_name: "wo2"
   - ip: "10.70.12.67"
     name: "worker03"
     roles: ["worker", "compute"]
     k8s_node_name: "wo3"
+  - ip: "10.70.12.68"
+    name: "worker04"
+    roles: ["worker", "cas"]
+    k8s_node_name: "wo4"
+  - ip: "10.70.12.59"
+    name: "worker05"
+    roles: ["worker"]
+    k8s_node_name: "wo5"
 
 #network
 nfs_allowed_subnet: "10.70.12.0/24"
@@ -60,7 +68,7 @@ jdbc_nfs_path: "/data/jdbcdrivers"
 ingress_host: "viya-ingress-text.com.tw"
 
 # Python Support 相關參數設定
-python_version: "3.14.0"                  
+python_version: "3.14"                  
 python_install_path: "Python-3.14.0"      
 python_nfs_path: "/nfsshare01/sas_open_source" 
 

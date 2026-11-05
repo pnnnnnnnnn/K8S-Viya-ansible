@@ -11,7 +11,7 @@
     chdir: /nfsshare01/lsrc/{{ customer_name }}/{{ viya_version }}/deploy/tool
   changed_when: true
 
-- name: 2.2 賦予所有工具執行權限 (+x)
+- name: 2.2 賦予所有工具執行權限 
   ansible.builtin.file:
     path: "/usr/local/bin/{{ item }}"
     mode: '+x'
@@ -48,7 +48,7 @@
   register: untar_deployment_assets
   changed_when: true
 
-- name: 4.1 搜尋目錄下的憑證壓縮檔 (certs.zip)
+- name: 4.1 搜尋目錄下的憑證壓縮檔 
   ansible.builtin.find:
     paths: "/nfsshare01/lsrc/{{ customer_name }}/{{ viya_version }}"
     patterns: "*certs.zip"
@@ -80,7 +80,7 @@
   ansible.builtin.debug:
     msg: "mirrormgr 已在背景非同步執行 (async)，Ansible 腳本將繼續往下執行後續任務。"
 
-- name: 6.1 建立 Kubernetes Namespace (viya4lts)
+- name: 6.1 建立 Kubernetes Namespace 
   ansible.builtin.shell: |
     kubectl create ns viya4lts || true
     kubectl get ns
@@ -96,7 +96,7 @@
     kubectl config set-context --current --namespace=viya4lts
   changed_when: true
 
-- name: 6.4 檢查叢集中的 StorageClass (sc)
+- name: 6.4 檢查叢集中的 StorageClass 
   ansible.builtin.shell: kubectl get sc
   register: get_sc_before
   changed_when: false
@@ -119,7 +119,7 @@
   ansible.builtin.debug:
     msg: "{{ get_sc_after.stdout_lines }}"
 
-- name: 7.1 設定 Contour Service (更新 internalTrafficPolicy 與 ports)
+- name: 7.1 設定 Contour Service 
   ansible.builtin.shell: |
     kubectl patch svc contour -n projectcontour --type=merge -p '{
       "spec": {
@@ -146,7 +146,7 @@
   ansible.builtin.debug:
     msg: "{{ get_contour_result.stdout_lines }}"
 
-- name: 8.1 設定 Envoy Service (更新 externalTrafficPolicy、ports 與 NodePort)
+- name: 8.1 設定 Envoy Service 
   ansible.builtin.shell: |
     kubectl patch svc envoy -n projectcontour --type=merge -p '{
       "spec": {
@@ -191,7 +191,7 @@
   ansible.builtin.debug:
     msg: "{{ get_projectcontour_svc.stdout_lines }}"
 
-- name: 10. 依照 all.yaml 設定各節點的 Taint 與 Label (CAS / Compute)
+- name: 10. 依照 all.yaml 設定各節點的 Taint 與 Label 
   ansible.builtin.shell: |
     {% if 'cas' in item.roles %}
     kubectl taint nodes {{ item.k8s_node_name }} workload.sas.com/class=cas:NoSchedule --overwrite
@@ -242,19 +242,19 @@
     dest: "/nfsshare01/lsrc/{{ customer_name }}/{{ viya_version }}/deploy/site-config/"
     remote_src: true
 
-- name: 13.2 建立 data-mounts-cas.yaml (覆蓋舊檔)
+- name: 13.2 建立 data-mounts-cas.yaml 
   ansible.builtin.copy:
     src: "/nfsshare01/lsrc/{{ customer_name }}/{{ viya_version }}/deploy/site-config/data-access/data-mounts-cas.sample.yaml"
     dest: "/nfsshare01/lsrc/{{ customer_name }}/{{ viya_version }}/deploy/site-config/data-access/data-mounts-cas.yaml"
     remote_src: true
 
-- name: 13.3建立 data-mounts-deployment.yaml (覆蓋舊檔)
+- name: 13.3建立 data-mounts-deployment.yaml 
   ansible.builtin.copy:
     src: "/nfsshare01/lsrc/{{ customer_name }}/{{ viya_version }}/deploy/site-config/data-access/data-mounts-deployment.sample.yaml"
     dest: "/nfsshare01/lsrc/{{ customer_name }}/{{ viya_version }}/deploy/site-config/data-access/data-mounts-deployment.yaml"
     remote_src: true
 
-- name: 13.4 建立 data-mounts-job.yaml (覆蓋舊檔)
+- name: 13.4 建立 data-mounts-job.yaml 
   ansible.builtin.copy:
     src: "/nfsshare01/lsrc/{{ customer_name }}/{{ viya_version }}/deploy/site-config/data-access/data-mounts-job.sample.yaml"
     dest: "/nfsshare01/lsrc/{{ customer_name }}/{{ viya_version }}/deploy/site-config/data-access/data-mounts-job.yaml"
@@ -332,7 +332,7 @@
     regexp: 'INGRESS_HOST=.*'
     replace: "INGRESS_HOST={{ ingress_host }}"
 
-- name: 18.2 更新 kustomization.yaml 中的 SAS_SERVICES_URL (帶有 https://)
+- name: 18.2 更新 kustomization.yaml 中的 SAS_SERVICES_URL 
   ansible.builtin.replace:
     path: "/nfsshare01/lsrc/{{ customer_name }}/{{ viya_version }}/deploy/kustomization.yaml"
     regexp: 'SAS_SERVICES_URL=https://.*'
@@ -350,7 +350,7 @@
     regexp: '^#\s*-\s*sas-bases/overlays/postgres/cds-postgres'
     replace: '- sas-bases/overlays/postgres/cds-postgres'
 
-- name: 19.2 在 components 區段確保加入 internal-cds-postgres 元件（避免重複新增）
+- name: 19.2 在 components 區段確保加入 internal-cds-postgres 元件
   ansible.builtin.lineinfile:
     path: "/nfsshare01/lsrc/{{ customer_name }}/{{ viya_version }}/deploy/kustomization.yaml"
     insertafter: '^components:\s*'
@@ -368,7 +368,7 @@
     msg: "找不到對應的 .jwt 授權檔案，請確認目錄路徑與解壓縮是否正確！"
   when: found_jwt_file.matched == 0
 
-- name: 20.3 自動將 kustomization.yaml 中的 SAS_LICENSE 替換為實際動態抓到的 .jwt 檔名
+- name: 20.3 將 kustomization.yaml 中的 SAS_LICENSE 替換為 .jwt 檔名
   ansible.builtin.replace:
     path: "/nfsshare01/lsrc/{{ customer_name }}/{{ viya_version }}/deploy/kustomization.yaml"
     regexp: 'SAS_LICENSE=.*\.jwt'
@@ -386,7 +386,7 @@
     regexp: '\{\{\s*PYTHON-EXE-DIR\s*\}\}/\{\{\s*PYTHON-EXECUTABLE\s*\}\}'
     replace: "{{ python_install_path }}/bin/python{{ python_version }}"
 
-- name: 21.3 修改 python-transformer.yaml 中的 NFS 掛載屬性與 IP (帶入 bastion_ip / registry_ip)
+- name: 21.3 修改 python-transformer.yaml 中的 NFS 掛載屬性與 IP 
   ansible.builtin.replace:
     path: "/nfsshare01/lsrc/{{ customer_name }}/{{ viya_version }}/deploy/site-config/sas-open-source-config/python/python-transformer.yaml"
     regexp: '\{\{\s*VOLUME-ATTRIBUTES\s*\}\}'
@@ -398,7 +398,7 @@
     regexp: '\{\{\s*PYTHON-EXE-DIR\s*\}\}/\{\{\s*PYTHON-EXECUTABLE\s*\}\}'
     replace: "{{ python_install_path }}/bin/python{{ python_version }}"
 
-- name: 22.1 修改 r-transformer.yaml 中的 VOLUME-ATTRIBUTES (代入 r_nfs_path 與 registry_ip)
+- name: 22.1 修改 r-transformer.yaml 中的 VOLUME-ATTRIBUTES 
   ansible.builtin.replace:
     path: "/nfsshare01/lsrc/{{ customer_name }}/{{ viya_version }}/deploy/site-config/sas-open-source-config/r/r-transformer.yaml"
     regexp: '\{\{\s*VOLUME-ATTRIBUTES\s*\}\}'
@@ -416,7 +416,7 @@
     regexp: '\{\{\s*R-HOMEDIR\s*\}\}'
     replace: "envs/renv"
 
-- name: 22.4 修改 r/kustomization.yaml 中的 R-MOUNTPATH/R-HOMEDIR 路徑 
+- name: 22.4 修改 r-kustomization.yaml 中的 R-MOUNTPATH/R-HOMEDIR 路徑 
   ansible.builtin.replace:
     path: "/nfsshare01/lsrc/{{ customer_name }}/{{ viya_version }}/deploy/site-config/sas-open-source-config/r/kustomization.yaml"
     regexp: '\{\{\s*R-MOUNTPATH\s*\}\}/\{\{\s*R-HOMEDIR\s*\}\}'
@@ -456,7 +456,7 @@
   register: kustomize_build_result
   changed_when: true
 
-- name: 25.2 動態將 harbor_destination 插入 site.yaml 的 image 路徑中
+- name: 25.2 將 harbor_destination 插入 site.yaml 的 image 路徑中
   ansible.builtin.replace:
     path: "/nfsshare01/lsrc/{{ customer_name }}/{{ viya_version }}/deploy/site.yaml"
     regexp: '({{ registry_ip }})/viya-4-'
@@ -464,18 +464,11 @@
 
 - name: 部署前環境清理與 Namespace 重建
   block:
-    - name: 1. 嘗試透過 site.yaml 清理舊資源（若有）
-      ansible.builtin.shell: kubectl delete -f site.yaml --ignore-not-found=true
-      args:
-        chdir: "/nfsshare01/lsrc/{{ customer_name }}/{{ viya_version }}/deploy"
-      ignore_errors: true
-      changed_when: true
-
-    - name: 2. 觸發刪除舊的 viya4lts Namespace（使用 --wait=false 避免 Ansible 卡住）
+    - name: 26.1 刪除舊的 viya4lts Namespace
       ansible.builtin.shell: kubectl delete ns viya4lts --wait=false --ignore-not-found=true
       changed_when: true
 
-    - name: 3. 檢查並強制清除卡在 Terminating 的 Namespace Finalizers（若存在）
+    - name: 26.2 強制清除卡在 Terminating 的 Namespace 
       ansible.builtin.shell: |
         if kubectl get ns viya4lts &>/dev/null; then
           kubectl get ns viya4lts -o json | jq '.spec.finalizers = []' > /tmp/ns-clean.json
@@ -483,40 +476,54 @@
         fi
       changed_when: true
 
-    - name: 4. 確認 Namespace 是否已被完全移除
-      ansible.builtin.shell: kubectl get ns viya4lts || echo "Namespace successfully removed or did not exist."
+    - name: 26.3 確認 Namespace 是否已被完全移除
+      ansible.builtin.shell: |
+        while kubectl get ns viya4lts &>/dev/null; do
+          sleep 2;
+        done
+        echo "Namespace successfully removed."
       changed_when: false
 
-    - name: 5. 重新建立全新的 viya4lts Namespace
+    - name: 26.4 重新建立 viya4lts Namespace
       ansible.builtin.shell: kubectl create ns viya4lts
       changed_when: true
 
-- name: 26.1 套用 Cluster-API 資源 (主要是 CRD)
-  ansible.builtin.shell: kubectl apply --selector="sas.com/admin=cluster-api" --server-side --force-conflicts -f site.yaml
-  args:
-    chdir: "/nfsshare01/lsrc/{{ customer_name }}/{{ viya_version }}/deploy"
-  changed_when: true
 
-- name: 26.2 等待 CRD 完全建立與註冊完成
-  ansible.builtin.shell: kubectl wait --for condition=established --timeout=60s -l "sas.com/admin=cluster-api" crd
-  args:
-    chdir: "/nfsshare01/lsrc/{{ customer_name }}/{{ viya_version }}/deploy"
-  changed_when: true
+- name: 執行 SAS Viya 順序化資源部署
+  block:
+    - name: 27.1 套用 Cluster API 級別的 CRD 與元件
+      ansible.builtin.shell: >
+        kubectl apply --selector="sas.com/admin=cluster-api" 
+        --server-side --force-conflicts -f site.yaml
+      args:
+        chdir: "/nfsshare01/lsrc/{{ customer_name }}/{{ viya_version }}/deploy"
+      changed_when: true
 
-- name: 26.3 套用 Cluster-Wide 資源
-  ansible.builtin.shell: kubectl apply --selector="sas.com/admin=cluster-wide" -f site.yaml
-  args:
-    chdir: "/nfsshare01/lsrc/{{ customer_name }}/{{ viya_version }}/deploy"
-  changed_when: true
+    - name: 27.2 等待 Cluster API 相關 CRD 進入 Established 狀態
+      ansible.builtin.shell: >
+        kubectl wait --for condition=established --timeout=60s 
+        -l "sas.com/admin=cluster-api" crd
+      args:
+        chdir: "/nfsshare01/lsrc/{{ customer_name }}/{{ viya_version }}/deploy"
+      changed_when: false
 
-- name: 26.4 套用 Cluster-Local 資源
-  ansible.builtin.shell: kubectl apply --selector="sas.com/admin=cluster-local" -f site.yaml --prune
-  args:
-    chdir: "/nfsshare01/lsrc/{{ customer_name }}/{{ viya_version }}/deploy"
-  changed_when: true
+    - name: 27.3 套用 Cluster-wide 級別資源
+      ansible.builtin.shell: >
+        kubectl apply --selector="sas.com/admin=cluster-wide" -f site.yaml
+      args:
+        chdir: "/nfsshare01/lsrc/{{ customer_name }}/{{ viya_version }}/deploy"
+      changed_when: true
 
-- name: 26.5 套用 Namespace 資源
-  ansible.builtin.shell: kubectl apply --selector="sas.com/admin=namespace" -f site.yaml --prune
-  args:
-    chdir: "/nfsshare01/lsrc/{{ customer_name }}/{{ viya_version }}/deploy"
-  changed_when: true
+    - name: 27.4 套用 Cluster-local 級別資源並啟用 prune
+      ansible.builtin.shell: >
+        kubectl apply --selector="sas.com/admin=cluster-local" -f site.yaml --prune
+      args:
+        chdir: "/nfsshare01/lsrc/{{ customer_name }}/{{ viya_version }}/deploy"
+      changed_when: true
+
+    - name: 27.5 套用 Namespace 級別資源並啟用 prune
+      ansible.builtin.shell: >
+        kubectl apply --selector="sas.com/admin=namespace" -f site.yaml --prune
+      args:
+        chdir: "/nfsshare01/lsrc/{{ customer_name }}/{{ viya_version }}/deploy"
+      changed_when: true

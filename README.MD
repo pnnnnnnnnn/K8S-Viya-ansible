@@ -4,7 +4,11 @@
 3. sas_repos_lts_202x.xx建立機器人帳戶 : sas-mirror-manager，永不到期、權限全選、紀錄token
 
 
-
-
 ***ansible內要設置的***
+1. all.yaml內的檔案都需要改
+2. host.ini內須改機器名稱
+
+***Viya需要設置的***
+1. /nfsshare01/sas_open_access放置python版本
 2. images.txt內k8s版本需改成客戶版本
+3. unzip的檔案須放置lts_xxx.xx內

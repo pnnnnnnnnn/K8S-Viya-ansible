@@ -1,10 +1,10 @@
 - name: 1. 自動清理與重置舊的 Kubernetes 環境 (確保每次都是乾淨狀態)
   block:
-    - name: 執行 kubeadm reset
+    - name: 1.1 執行 kubeadm reset
       ansible.builtin.command: kubeadm reset -f
       ignore_errors: true
 
-    - name: 清理殘留的 kubernetes 與 etcd 目錄
+    - name: 1.2 清理殘留的 kubernetes 與 etcd 目錄
       ansible.builtin.file:
         path: "{{ item }}"
         state: absent

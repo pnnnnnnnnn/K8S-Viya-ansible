@@ -126,6 +126,16 @@
     state: present
     reload: yes
 
+- name: 11. 啟用 Linux 橋接器過濾 iptables 流量 (Kubernetes 網路必需)
+  ansible.posix.sysctl:
+    name: "{{ item }}"
+    value: '1'
+    state: present
+    reload: yes
+  loop:
+    - net.bridge.bridge-nf-call-iptables
+    - net.bridge.bridge-nf-call-ip6tables
+
 - name: 11. 重新載入並套用所有 sysctl 系統設定
   ansible.builtin.command: sysctl --system
   changed_when: true
