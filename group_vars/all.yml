@@ -1,6 +1,6 @@
-registry_ip: "10.70.12.60"
+registry_ip: "10.70.12.50"
 registry_host: "Bastion"
-master_init_ip: "10.70.12.61"
+master_init_ip: "10.70.12.51"
 customer_name: "nan_shan"
 
 # RHEL 版本
@@ -9,34 +9,42 @@ rhel_version: "9.8"
 # K8s Cluster 節點設定清單
 # group_vars/all.yml
 cluster_nodes:
-  - ip: "10.70.12.60"
+  - ip: "10.70.12.50"
     name: "bastion"
     roles: ["bastion"]
     k8s_node_name: "Bastion"
-  - ip: "10.70.12.61"
-    name: "master"
+  - ip: "10.70.12.51"
+    name: "master01"
     roles: ["control-plane"]
-    k8s_node_name: "ma"
+    k8s_node_name: "master1"
+  - ip: "10.70.12.61"
+    name: "master02"
+    roles: ["control-plane"]
+    k8s_node_name: "master2"
   - ip: "10.70.12.65"
+    name: "master03"
+    roles: ["control-plane"]
+    k8s_node_name: "master3"
+  - ip: "10.70.12.53"
     name: "worker01"
     roles: ["worker"]
-    k8s_node_name: "wo1"
-  - ip: "10.70.12.66"
+    k8s_node_name: "worker1"
+  - ip: "10.70.12.54"
     name: "worker02"
     roles: ["worker"]
-    k8s_node_name: "wo2"
-  - ip: "10.70.12.67"
-    name: "worker03"
-    roles: ["worker", "compute"]
-    k8s_node_name: "wo3"
-  - ip: "10.70.12.68"
-    name: "worker04"
-    roles: ["worker", "cas"]
-    k8s_node_name: "wo4"
+    k8s_node_name: "worker2"
   - ip: "10.70.12.59"
-    name: "worker05"
+    name: "worker03"
     roles: ["worker"]
-    k8s_node_name: "wo5"
+    k8s_node_name: "worker3"
+  - ip: "10.70.12.52"
+    name: "worker04"
+    roles: ["worker", "compute"]
+    k8s_node_name: "worker4"
+  - ip: "10.70.12.66"
+    name: "worker05"
+    roles: ["worker", "cas"]
+    k8s_node_name: "worker5"
 
 #network
 nfs_allowed_subnet: "10.70.12.0/24"
@@ -45,7 +53,7 @@ nfs_allowed_subnet: "10.70.12.0/24"
 k8s_version: "1.33.9"
 
 #VIP、HA
-HA_ip: "10.70.12.61"
+HA_ip: "10.70.12.51"
 
 #CAS VM Core
 sascache_count: 12
@@ -65,7 +73,7 @@ host_path: "/net/example.com/ifs/edm_data/Testdata/modeling/wine"
 jdbc_nfs_path: "/data/jdbcdrivers"
 
 #Viya網址**不用輸入https
-ingress_host: "viya-ingress-text.com.tw"
+ingress_host: "viyatest.com"
 
 # Python Support 相關參數設定
 python_version: "3.14"                  
@@ -87,7 +95,7 @@ harbor_destination: sas_repos_lts_2026.03
 harbor_username: robot$sas_repos_lts_2026.03+sas-mirror-manager
 
 #Harbor權杖
-harbor_password: BD8MxTi45VyFulWdXpOLA4dVJ152NYGM
+harbor_password: 1sQMbqnxOAGdvwE6yZDegICEHU2bAzX7
 
 
 

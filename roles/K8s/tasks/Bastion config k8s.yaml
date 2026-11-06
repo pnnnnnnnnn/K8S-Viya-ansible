@@ -9,7 +9,7 @@
     src: /etc/kubernetes/admin.conf
     dest: /tmp/k8s_admin.conf
     flat: yes
-  delegate_to: "{{ master_init_ip}}"
+  delegate_to: "{{ master_init_ip }}"
   run_once: true
 
 - name: 3. 將 admin.conf 分發並設定權限到目標節點的 .kube/config

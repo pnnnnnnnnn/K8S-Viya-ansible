@@ -20,18 +20,18 @@
   ansible.builtin.debug:
     msg: "{{ showmount_result.stdout_lines }}"
 
-- name: 5.1 建立掛載點資料夾
-  ansible.builtin.file:
-    path: "/nfsshare01/repos"
-    state: directory
-    mode: "0755"
+- name: 5.1 確保本地掛載點資料夾存在
+  ansible.builtin.shell: mkdir -p /nfsshare01/repos
+  args:
+    creates: /nfsshare01/repos
 
-- name: 5.2 掛載 NFS 遠端目錄
-  ansible.builtin.mount:
-    path: "/nfsshare01/repos"
-    src: "{{ registry_host }}:/nfsshare01/repos"
-    fstype: nfs
-    state: mounted
+- name: 5.2 掛載 NFS 遠端子目錄
+  ansible.builtin.shell: |
+    if ! mountpoint -q /nfsshare01/repos; then
+      mount -t nfs {{ registry_host }}:/nfsshare01/repos /nfsshare01/repos
+    fi
+  register: mount_result
+  failed_when: mount_result.rc != 0
 
 - name: 5.3 檢查檔案系統掛載狀態 (df -Th)
   ansible.builtin.command: "df -Th /nfsshare01/repos"
