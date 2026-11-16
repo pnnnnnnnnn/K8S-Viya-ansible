@@ -17,7 +17,7 @@ cluster_nodes:
     name: "master01"
     roles: ["control-plane"]
     k8s_node_name: "master1"
-  - ip: "10.70.12.61"
+  - ip: "10.70.12.67"
     name: "master02"
     roles: ["control-plane"]
     k8s_node_name: "master2"
